@@ -87,7 +87,6 @@ VMware-Monitoring-Dashboard/
 ├── Initialize-MonitoringDatabase.ps1      # Crear estructura de BD
 ├── Collect-VMwareData.ps1                 # Script principal de recopilación
 ├── Start-DashboardServer.ps1              # Servidor web con API REST
-├── Download-ChartJS.ps1                   # Descarga Chart.js localmente
 ├── Test-Dashboard.ps1                     # Script de diagnóstico
 │
 ├── connect.ps1.example                    # Plantilla de conexión (SIN credenciales)
