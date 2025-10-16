@@ -82,7 +82,6 @@ VMware-Monitoring-Dashboard/
 ├── README.md                              # Este archivo
 ├── INSTALL.md                             # Guía detallada de instalación
 ├── LICENSE                                # Licencia del proyecto
-│
 ├── Install-SQLite.ps1                     # Instalador de SQLite
 ├── Initialize-MonitoringDatabase.ps1      # Crear estructura de BD
 ├── Collect-VMwareData.ps1                 # Script principal de recopilación
