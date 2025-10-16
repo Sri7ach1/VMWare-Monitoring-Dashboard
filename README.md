@@ -99,7 +99,7 @@ VMware-Monitoring-Dashboard/
 │       ├── api.js                         # Módulo de API calls
 │       ├── charts.js                      # Configuración de gráficos
 │       ├── app.js                         # Aplicación principal
-│       └── chart.js                       # Librería Chart.js (descargada)
+│       └── chart.js                       # Librería Chart.js
 │
 ├── data/                                  # Base de datos (creada al inicializar)
 │   └── vmware_monitoring.db               # SQLite database
