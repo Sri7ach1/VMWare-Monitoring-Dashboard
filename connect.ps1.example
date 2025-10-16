@@ -1,0 +1,83 @@
+# Script de conexión a vCenters VMware
+# PLANTILLA - Renombrar a connect.ps1 y editar con tus credenciales
+
+# Suprimir warnings informativos
+$WarningPreference = 'SilentlyContinue'
+$InformationPreference = 'SilentlyContinue'
+
+# Import the VMware PowerCLI module
+Import-Module VMware.PowerCLI -ErrorAction Stop | Out-Null
+
+# Set the PowerCLI configuration to ignore certificate warnings (silencioso)
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false -Scope Session | Out-Null
+
+# ═══════════════════════════════════════════════════════════
+# CONFIGURACIÓN - EDITAR CON TUS DATOS
+# ═══════════════════════════════════════════════════════════
+
+# Credenciales de acceso
+$esxiUsername = "USUARIO_AQUI@vsphere.local"
+$esxiPassword = "PASSWORD_AQUI"
+
+# Array of vCenter servers
+# IMPORTANTE: Añade todos tus vCenters aquí
+$esxiServers = @(
+    "vcenter01.tudominio.com",
+    "vcenter02.tudominio.com",
+    "vcenter03.tudominio.com"
+    # Añade más según tu infraestructura...
+)
+
+# ═══════════════════════════════════════════════════════════
+# NO EDITAR DEBAJO DE ESTA LÍNEA
+# ═══════════════════════════════════════════════════════════
+
+# Conectar a cada vCenter
+$successCount = 0
+$failedServers = @()
+
+Write-Host "Conectando a $($esxiServers.Count) vCenter(s)..." -ForegroundColor Cyan
+
+foreach ($server in $esxiServers) {
+    try {
+        Write-Host "  Conectando a $server..." -ForegroundColor Gray -NoNewline
+        Connect-VIServer -Server $server -User $esxiUsername -Password $esxiPassword -ErrorAction Stop | Out-Null
+        $successCount++
+        Write-Host " ✓" -ForegroundColor Green
+    }
+    catch {
+        $failedServers += $server
+        Write-Host " ✗" -ForegroundColor Red
+        Write-Host "    Error: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+Write-Host ""
+Write-Host "Resultado de conexiones:" -ForegroundColor White
+Write-Host "  Exitosas: $successCount / $($esxiServers.Count)" -ForegroundColor $(if ($successCount -eq $esxiServers.Count) { "Green" } else { "Yellow" })
+
+if ($failedServers.Count -gt 0) {
+    Write-Host "  Fallidas: $($failedServers.Count)" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Servidores con error:" -ForegroundColor Red
+    $failedServers | ForEach-Object {
+        Write-Host "  - $_" -ForegroundColor Gray
+    }
+    Write-Host ""
+}
+
+# Resultado (solo si se ejecuta standalone)
+if ($MyInvocation.InvocationName -like "*connect.ps1*") {
+    Write-Host ""
+    if ($successCount -gt 0) {
+        Write-Host "✓ Conexiones listas para usar" -ForegroundColor Green
+    } else {
+        Write-Host "✗ No se pudo conectar a ningún vCenter" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Verifica:" -ForegroundColor Yellow
+        Write-Host "  1. Credenciales correctas" -ForegroundColor White
+        Write-Host "  2. Conectividad de red" -ForegroundColor White
+        Write-Host "  3. Nombres de vCenter correctos" -ForegroundColor White
+        Write-Host ""
+    }
+}

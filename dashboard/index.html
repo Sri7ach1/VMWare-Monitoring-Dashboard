@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMware Monitoring Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Chart.js local -->
+    <script src="js/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🖥️ VMware Infrastructure Monitoring</h1>
+                <div class="header-actions">
+                    <button id="refreshBtn" class="btn btn-primary">🔄 Actualizar</button>
+                    <!--<button id="exportBtn" class="btn btn-secondary">📊 Exportar</button>-->
+                </div>
+            </div>
+            <div class="last-update">
+                Última actualización: <span id="lastUpdate">Cargando...</span>
+            </div>
+        </header>
+
+        <!-- Filtros -->
+        <section class="filters">
+            <div class="filter-group">
+                <label for="dateRange">Rango de fechas:</label>
+                <select id="dateRange">
+                    <option value="1">Último día</option>
+                    <option value="7" selected>Últimos 7 días</option>
+                    <option value="30">Últimos 30 días</option>
+                    <option value="90">Últimos 90 días</option>
+                    <option value="all">Todo el histórico</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="datacenterFilter">Datacenter:</label>
+                <select id="datacenterFilter">
+                    <option value="all">Todos</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- KPIs -->
+        <section class="kpis">
+            <div class="kpi-card kpi-success">
+                <div class="kpi-icon">✅</div>
+                <div class="kpi-content">
+                    <h3 id="totalHosts">-</h3>
+                    <p>Total Hosts</p>
+                </div>
+            </div>
+            <div class="kpi-card kpi-primary">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-content">
+                    <h3 id="availability">-</h3>
+                    <p>Disponibilidad</p>
+                </div>
+            </div>
+            <div class="kpi-card kpi-warning">
+                <div class="kpi-icon">⚠️</div>
+                <div class="kpi-content">
+                    <h3 id="disconnectedHosts">-</h3>
+                    <p>Hosts Desconectados</p>
+                </div>
+            </div>
+            <div class="kpi-card kpi-info">
+                <div class="kpi-icon">🌐</div>
+                <div class="kpi-content">
+                    <h3 id="vcentersCount">-</h3>
+                    <p>vCenters</p>
+                </div>
+            </div>
+            <div class="kpi-card kpi-info">
+                <div class="kpi-icon">🏢</div>
+                <div class="kpi-content">
+                    <h3 id="datacentersCount">-</h3>
+                    <p>Datacenters</p>
+                </div>
+            </div>
+            <div class="kpi-card kpi-info">
+                <div class="kpi-icon">🔷</div>
+                <div class="kpi-content">
+                    <h3 id="clustersCount">-</h3>
+                    <p>Clusters</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Gráficos -->
+        <section class="charts">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>📈 Tendencia de Disponibilidad</h2>
+                </div>
+                <canvas id="availabilityChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🔧 Distribución de Versiones ESXi</h2>
+                </div>
+                <canvas id="versionsChart"></canvas>
+            </div>
+        </section>
+
+        <section class="charts charts-half">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🏢 Hosts por Datacenter</h2>
+                </div>
+                <canvas id="datacenterChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>⏱️ Histórico de Ejecuciones</h2>
+                </div>
+                <canvas id="executionsChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Tablas -->
+        <section class="tables">
+            <!-- Hosts Desconectados Ahora -->
+            <div class="table-container" id="disconnectedNowSection" style="display: none;">
+                <div class="table-header">
+                    <h2>⚠️ Hosts Desconectados Ahora</h2>
+                    <span class="badge badge-error" id="disconnectedNowCount">0</span>
+                </div>
+                <div class="table-wrapper">
+                    <table id="disconnectedNowTable">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>Datacenter</th>
+                                <th>Cluster</th>
+                                <th>vCenter</th>
+                                <th>Estado</th>
+                                <th>Versión</th>
+                                <th>Detectado</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Histórico de Desconexiones -->
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>📊 Histórico de Desconexiones</h2>
+                    <div class="filter-group" style="margin: 0;">
+                        <label for="disconnectedHistoryFilter" style="margin-right: 8px;">Período:</label>
+                        <select id="disconnectedHistoryFilter" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                            <option value="latest">Última ejecución</option>
+                            <option value="7" selected>Últimos 7 días</option>
+                            <option value="30">Últimos 30 días</option>
+                            <option value="all">Todo el histórico</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="disconnectedHistoryTable">
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>Datacenter</th>
+                                <th>Cluster</th>
+                                <th>vCenter</th>
+                                <th>Estado</th>
+                                <th>Versión</th>
+                                <th>Detectado</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Últimas Ejecuciones -->
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>📋 Últimas Ejecuciones</h2>
+                </div>
+                <div class="table-wrapper">
+                    <table id="executionsTable">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Total Hosts</th>
+                                <th>Conectados</th>
+                                <th>Desconectados</th>
+                                <th>Disponibilidad</th>
+                                <th>vCenters</th>
+                                <th>Alerta</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>VMware Infrastructure Monitoring System v1.0 | Datos actualizados en tiempo real desde SQLite</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Cargando datos...</p>
+    </div>
+
+    <!-- Scripts - Cargar en orden específico -->
+    <script src="js/api.js?v=2"></script>
+    <script src="js/charts.js?v=2"></script>
+    <script src="js/app.js?v=2"></script>
+</body>
+</html>

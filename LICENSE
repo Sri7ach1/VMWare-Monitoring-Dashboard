@@ -1,0 +1,82 @@
+# Licencia de Uso
+
+## VMware Infrastructure Monitoring Dashboard
+
+Copyright (c) 2025 Aridane Mirabal
+
+---
+
+## Uso Interno / Privado
+
+Este software ha sido desarrollado para uso interno dentro de organizaciones y entornos privados.
+
+### Permisos Otorgados
+
+Se concede permiso, sin cargo, a cualquier persona que obtenga una copia de este software y los archivos de documentación asociados (el "Software"), para usar el Software en entornos privados e internos, sujeto a las siguientes condiciones:
+
+1. **Uso Permitido:**
+   - Uso interno dentro de tu organización
+   - Modificación y adaptación a tus necesidades
+   - Distribución interna entre equipos de tu organización
+   - Uso en múltiples infraestructuras VMware
+
+2. **Atribución:**
+   - El aviso de copyright anterior y este aviso de permiso deben incluirse en todas las copias o porciones sustanciales del Software
+
+3. **Sin Garantías:**
+   - EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O IMPLÍCITA, INCLUYENDO PERO NO LIMITADO A GARANTÍAS DE COMERCIABILIDAD, IDONEIDAD PARA UN PROPÓSITO PARTICULAR Y NO INFRACCIÓN
+   - EN NINGÚN CASO LOS AUTORES O TITULARES DE DERECHOS DE AUTOR SERÁN RESPONSABLES POR CUALQUIER RECLAMO, DAÑO U OTRA RESPONSABILIDAD, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O DE OTRO MODO, QUE SURJA DE, FUERA DE O EN CONEXIÓN CON EL SOFTWARE O EL USO U OTROS TRATOS EN EL SOFTWARE
+
+### Restricciones
+
+1. **No Distribución Pública:**
+   - No se permite la distribución pública del software sin modificaciones significativas
+   - No se permite la venta del software sin autorización
+
+2. **Uso Comercial:**
+   - Consultar con el autor para uso comercial externo
+   - El uso interno dentro de empresas está permitido
+
+3. **Modificaciones:**
+   - Las modificaciones deben ser claramente documentadas
+   - Se recomienda (pero no se requiere) compartir mejoras con la comunidad
+
+---
+
+## Dependencias de Terceros
+
+Este software utiliza las siguientes bibliotecas y herramientas de terceros:
+
+### VMware PowerCLI
+- Copyright: VMware, Inc.
+- Licencia: VMware End User License Agreement
+- URL: https://www.vmware.com/support/pubs/
+
+### Chart.js
+- Copyright: Chart.js Contributors
+- Licencia: MIT License
+- URL: https://www.chartjs.org/
+
+### SQLite
+- Licencia: Public Domain
+- URL: https://www.sqlite.org/copyright.html
+
+---
+
+## Contacto
+
+Para consultas sobre licenciamiento o uso comercial:
+- Autor: Aridane Mirabal
+- Rol: Administrador de Sistemas Linux e Infraestructura VMware
+
+---
+
+## Changelog de Licencia
+
+### v1.0.0 (2025-10-16)
+- Licencia inicial para uso interno/privado
+- Permisos de modificación y distribución interna
+
+---
+
+**Nota Legal:** Esta licencia está sujeta a cambios. Consulta siempre la versión más reciente en el repositorio del proyecto.
