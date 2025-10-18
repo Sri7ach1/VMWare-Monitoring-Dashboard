@@ -107,14 +107,42 @@ function Get-ContentType {
 
 # Crear HTTP Listener
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:$Port/")
-$listener.Start()
+
+# Escuchar en todas las interfaces para acceso LAN
+$listener.Prefixes.Add("http://+:$Port/")
+
+try {
+    $listener.Start()
+}
+catch {
+    Write-Host ""
+    Write-Host "✗ Error iniciando servidor en puerto $Port" -ForegroundColor Red
+    Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Ejecuta como Administrador:" -ForegroundColor Yellow
+    Write-Host "  netsh http add urlacl url=`"http://+:$Port/`" sddl=`"D:(A;;GX;;;S-1-1-0)`"" -ForegroundColor Cyan
+    Write-Host ""
+    exit 1
+}
+
+# Obtener IP local
+$localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
+    $_.InterfaceAlias -notlike "*Loopback*" -and 
+    $_.IPAddress -notlike "169.254.*" -and
+    $_.PrefixOrigin -ne "WellKnown"
+} | Select-Object -First 1).IPAddress
 
 Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
 Write-Host "✅ Servidor iniciado" -ForegroundColor Green
 Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
-Write-Host "🌐 Dashboard: http://localhost:$Port" -ForegroundColor Cyan
+Write-Host "🌐 Acceso local: http://localhost:$Port" -ForegroundColor Cyan
+if ($localIP) {
+    Write-Host "🌐 Acceso LAN: http://${localIP}:$Port" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "📤 Comparte con tus compañeros: http://${localIP}:$Port" -ForegroundColor Yellow
+}
+Write-Host ""
 Write-Host "📊 API: http://localhost:$Port/api/*" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Presiona Ctrl+C para detener el servidor" -ForegroundColor Yellow
@@ -175,22 +203,34 @@ try {
                     if ($request.QueryString["days"]) {
                         $days = [int]$request.QueryString["days"]
                     }
-                    $jsonData = Invoke-SQLiteQuery "SELECT * FROM v_availability_trend LIMIT $days;"
+                    
+                    # Query directa sin usar vista, calculando promedio correcto
+                    $jsonData = Invoke-SQLiteQuery @"
+SELECT 
+    DATE(execution_date) as date,
+    COUNT(*) as total_executions,
+    ROUND(AVG(availability_percent), 2) as avg_availability,
+    ROUND(AVG(disconnected_hosts), 0) as total_disconnected
+FROM executions
+WHERE execution_date >= datetime('now', '-$days days')
+GROUP BY DATE(execution_date)
+ORDER BY date DESC;
+"@
                 }
                 elseif ($url -eq "/api/version-distribution") {
                     $jsonData = Invoke-SQLiteQuery @"
-SELECT vd.* FROM version_distribution vd
-JOIN executions e ON vd.execution_id = e.id
-ORDER BY e.execution_date DESC, vd.host_count DESC
-LIMIT 10;
+SELECT vd.* 
+FROM version_distribution vd
+WHERE vd.execution_id = (SELECT MAX(id) FROM executions)
+ORDER BY vd.host_count DESC;
 "@
                 }
                 elseif ($url -eq "/api/datacenter-stats") {
                     $jsonData = Invoke-SQLiteQuery @"
-SELECT ds.* FROM datacenter_stats ds
-JOIN executions e ON ds.execution_id = e.id
-ORDER BY e.execution_date DESC
-LIMIT 50;
+SELECT ds.* 
+FROM datacenter_stats ds
+WHERE ds.execution_id = (SELECT MAX(id) FROM executions)
+ORDER BY ds.total_hosts DESC;
 "@
                 }
                 elseif ($url -eq "/api/disconnected-hosts") {

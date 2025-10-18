@@ -2,13 +2,31 @@
 # Solo recopila datos y los guarda en SQLite - Sin alertas ni exportaciones
 
 param(
-    [string]$DatabasePath = ".\data\vmware_monitoring.db",
+    [string]$DatabasePath = "C:\Users\aridane.mirabal\Desktop\tpm\reports_bbdd\data\vmware_monitoring.db",
     [int]$MaxThreads = 6,
-    [string]$ConnectScript = ".\connect.ps1"
+    [string]$ConnectScript = $null
 )
 
 $ErrorActionPreference = "Continue"
 $scriptStartTime = Get-Date
+
+# Añadir ruta de módulos globales antes de importar PowerCLI
+$env:PSModulePath += ";C:\Program Files\PowerShell\Modules"
+# Importar módulo principal
+Import-Module VMware.PowerCLI -ErrorAction Stop
+
+# Detectar directorio del script
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# Si no se especificó ConnectScript, usar el del mismo directorio
+if (-not $ConnectScript) {
+    $ConnectScript = Join-Path $scriptDir "connect.ps1"
+}
+
+# Si DatabasePath es relativa, convertirla a absoluta basada en directorio del script
+if (-not [System.IO.Path]::IsPathRooted($DatabasePath)) {
+    $DatabasePath = Join-Path $scriptDir $DatabasePath
+}
 
 # Cargar ensamblados necesarios para procesamiento paralelo
 Add-Type -AssemblyName System.Management.Automation
@@ -39,6 +57,7 @@ if (-not (Test-Path $DatabasePath)) {
 # Verificar SQLite
 $sqlite3Path = $null
 $searchPaths = @(
+    (Join-Path $scriptDir "sqlite3.exe"),
     ".\sqlite3.exe",
     "$PSScriptRoot\sqlite3.exe"
 )
@@ -322,7 +341,7 @@ INSERT INTO executions (
     alert_sent,
     alert_type
 ) VALUES (
-    datetime('now'),
+    datetime('now','localtime'),
     $totalHosts,
     $connectedHosts,
     $disconnectedHosts,
@@ -367,7 +386,7 @@ if ($executionId -gt 0) {
 # Insertar hosts en lotes (bulk insert)
 Write-Host "Insertando datos de hosts..." -ForegroundColor Cyan
 $hostsInserted = 0
-$batchSize = 100
+$batchSize = 250
 $hostBatches = @()
 $currentBatch = @()
 

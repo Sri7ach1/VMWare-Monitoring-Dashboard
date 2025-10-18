@@ -2,6 +2,7 @@
 const App = {
     currentDateRange: 7,
     currentDatacenter: 'all',
+    currentDisconnectedPeriod: '7',
     
     // Inicializar aplicación
     async init() {
@@ -36,6 +37,12 @@ const App = {
             this.loadAllData();
         });
         
+        // Filtro de histórico de desconexiones
+        document.getElementById('disconnectedHistoryFilter').addEventListener('change', (e) => {
+            this.currentDisconnectedPeriod = e.target.value;
+            this.loadDisconnectedHistory();
+        });
+        
         // Botón de exportar
         document.getElementById('exportBtn').addEventListener('click', () => {
             this.exportData();
@@ -55,7 +62,8 @@ const App = {
                 availabilityTrend,
                 versions,
                 datacenterStats,
-                disconnectedHosts,
+                disconnectedNow,
+                disconnectedHistory,
                 recentExecutions,
                 datacenters
             ] = await Promise.all([
@@ -64,6 +72,7 @@ const App = {
                 API.getVersionDistribution(),
                 API.getDatacenterStats(),
                 API.getDisconnectedHosts(),
+                API.getDisconnectedHistory(this.currentDisconnectedPeriod),
                 API.getRecentExecutions(10),
                 API.getDatacenters()
             ]);
@@ -73,7 +82,8 @@ const App = {
                 availabilityTrend: availabilityTrend?.length,
                 versions: versions?.length,
                 datacenterStats: datacenterStats?.length,
-                disconnectedHosts: disconnectedHosts?.length,
+                disconnectedNow: disconnectedNow?.length,
+                disconnectedHistory: disconnectedHistory?.length,
                 recentExecutions: recentExecutions?.length,
                 datacenters: datacenters?.length
             });
@@ -86,7 +96,8 @@ const App = {
             // Actualizar UI
             this.updateKPIs(summary);
             this.updateCharts(availabilityTrend, versions, datacenterStats, recentExecutions);
-            this.updateTables(disconnectedHosts, recentExecutions);
+            this.updateDisconnectedTables(disconnectedNow, disconnectedHistory);
+            this.updateExecutionsTable(recentExecutions);
             this.updateDatacenterFilter(datacenters);
             this.updateLastUpdate();
             
@@ -102,26 +113,40 @@ const App = {
     
     // Actualizar KPIs
     updateKPIs(data) {
-        if (!data) return;
+        if (!data) {
+            console.error('updateKPIs: No data received');
+            return;
+        }
         
-        document.getElementById('totalHosts').textContent = data.total_hosts || '-';
+        console.log('updateKPIs - Raw data:', data);
+        console.log('vcenters_processed:', data.vcenters_processed, 'type:', typeof data.vcenters_processed);
+        console.log('vcenters_total:', data.vcenters_total, 'type:', typeof data.vcenters_total);
+        
+        document.getElementById('totalHosts').textContent = data.total_hosts || '0';
         document.getElementById('availability').textContent = 
-            data.availability_percent ? `${data.availability_percent}%` : '-';
+            data.availability_percent ? `${data.availability_percent}%` : '0%';
         document.getElementById('disconnectedHosts').textContent = data.disconnected_hosts || '0';
-        document.getElementById('vcentersCount').textContent = 
-            `${data.vcenters_processed}/${data.vcenters_total}`;
-        document.getElementById('datacentersCount').textContent = data.datacenters_count || '-';
-        document.getElementById('clustersCount').textContent = data.clusters_processed || '-';
+        
+        const vcentersProcessed = data.vcenters_processed || 0;
+        const vcentersTotal = data.vcenters_total || 0;
+        document.getElementById('vcentersCount').textContent = `${vcentersProcessed}/${vcentersTotal}`;
+        console.log('Setting vcentersCount to:', `${vcentersProcessed}/${vcentersTotal}`);
+        
+        document.getElementById('datacentersCount').textContent = data.datacenters_count || '0';
+        document.getElementById('clustersCount').textContent = data.clusters_processed || '0';
         
         // Cambiar color del KPI de disponibilidad según porcentaje
         const availabilityCard = document.getElementById('availability').closest('.kpi-card');
-        availabilityCard.className = 'kpi-card';
-        if (data.availability_percent >= 95) {
-            availabilityCard.classList.add('kpi-success');
-        } else if (data.availability_percent >= 90) {
-            availabilityCard.classList.add('kpi-warning');
-        } else {
-            availabilityCard.classList.add('kpi-danger');
+        if (availabilityCard) {
+            availabilityCard.className = 'kpi-card';
+            const availPct = parseFloat(data.availability_percent) || 0;
+            if (availPct >= 95) {
+                availabilityCard.classList.add('kpi-success');
+            } else if (availPct >= 90) {
+                availabilityCard.classList.add('kpi-warning');
+            } else {
+                availabilityCard.classList.add('kpi-danger');
+            }
         }
     },
     
@@ -154,15 +179,39 @@ const App = {
         }
     },
     
-    // Actualizar tablas
-    updateTables(disconnectedHosts, recentExecutions) {
-        // Tabla de hosts desconectados
-        const disconnectedSection = document.getElementById('disconnectedSection');
-        const disconnectedTable = document.getElementById('disconnectedTable').querySelector('tbody');
+    // Actualizar tablas de hosts desconectados
+    updateDisconnectedTables(disconnectedNow, disconnectedHistory) {
+        // Tabla de hosts desconectados AHORA (última ejecución)
+        const disconnectedNowSection = document.getElementById('disconnectedNowSection');
+        const disconnectedNowTableElement = document.getElementById('disconnectedNowTable');
+        const disconnectedNowCount = document.getElementById('disconnectedNowCount');
         
-        if (disconnectedHosts && disconnectedHosts.length > 0) {
-            disconnectedSection.style.display = 'block';
-            disconnectedTable.innerHTML = disconnectedHosts.map(host => `
+        if (!disconnectedNowSection || !disconnectedNowTableElement || !disconnectedNowCount) {
+            console.error('Elementos de tabla "disconnected now" no encontrados');
+            return;
+        }
+        
+        const disconnectedNowTable = disconnectedNowTableElement.querySelector('tbody');
+        if (!disconnectedNowTable) {
+            console.error('tbody de disconnectedNowTable no encontrado');
+            return;
+        }
+        
+        if (disconnectedNow && disconnectedNow.length > 0) {
+            disconnectedNowSection.style.display = 'block';
+            disconnectedNowCount.textContent = disconnectedNow.length;
+            
+            disconnectedNowTable.innerHTML = disconnectedNow.map(host => {
+                const detectedDate = new Date(host.detected_at);
+                const dateStr = detectedDate.toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
                 <tr>
                     <td>${host.hostname}</td>
                     <td>${host.datacenter}</td>
@@ -170,13 +219,57 @@ const App = {
                     <td>${host.vcenter}</td>
                     <td><span class="status-badge status-disconnected">${host.connection_state}</span></td>
                     <td>${host.esxi_version} (${host.esxi_build})</td>
+                    <td>${dateStr}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         } else {
-            disconnectedSection.style.display = 'none';
+            disconnectedNowSection.style.display = 'none';
         }
         
-        // Tabla de últimas ejecuciones
+        // Tabla de histórico de desconexiones
+        const disconnectedHistoryTableElement = document.getElementById('disconnectedHistoryTable');
+        if (!disconnectedHistoryTableElement) {
+            console.error('Elemento disconnectedHistoryTable no encontrado');
+            return;
+        }
+        
+        const disconnectedHistoryTable = disconnectedHistoryTableElement.querySelector('tbody');
+        if (!disconnectedHistoryTable) {
+            console.error('tbody de disconnectedHistoryTable no encontrado');
+            return;
+        }
+        
+        if (disconnectedHistory && disconnectedHistory.length > 0) {
+            disconnectedHistoryTable.innerHTML = disconnectedHistory.map(host => {
+                const detectedDate = new Date(host.detected_at);
+                const dateStr = detectedDate.toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
+                <tr>
+                    <td>${host.hostname}</td>
+                    <td>${host.datacenter}</td>
+                    <td>${host.cluster}</td>
+                    <td>${host.vcenter}</td>
+                    <td><span class="status-badge status-disconnected">${host.connection_state}</span></td>
+                    <td>${host.esxi_version} (${host.esxi_build})</td>
+                    <td>${dateStr}</td>
+                </tr>
+            `;
+            }).join('');
+        } else {
+            disconnectedHistoryTable.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay hosts desconectados en el período seleccionado</td></tr>';
+        }
+    },
+    
+    // Actualizar tabla de ejecuciones
+    updateExecutionsTable(recentExecutions) {
         const executionsTable = document.getElementById('executionsTable').querySelector('tbody');
         
         if (recentExecutions && recentExecutions.length > 0) {
@@ -215,16 +308,20 @@ const App = {
     // Actualizar filtro de datacenters
     updateDatacenterFilter(datacenters) {
         const select = document.getElementById('datacenterFilter');
+        if (!select) return;
+        
         const currentValue = select.value;
         
         // Mantener "Todos"
         select.innerHTML = '<option value="all">Todos</option>';
         
-        if (datacenters && datacenters.length > 0) {
+        if (datacenters && Array.isArray(datacenters) && datacenters.length > 0) {
             datacenters.forEach(dc => {
+                // Asegurarse de que dc es un string
+                const dcName = typeof dc === 'string' ? dc : (dc.datacenter_name || dc.toString());
                 const option = document.createElement('option');
-                option.value = dc;
-                option.textContent = dc;
+                option.value = dcName;
+                option.textContent = dcName;
                 select.appendChild(option);
             });
         }
@@ -247,6 +344,44 @@ const App = {
             second: '2-digit'
         });
         document.getElementById('lastUpdate').textContent = timeStr;
+    },
+    
+    // Cargar solo histórico de desconexiones (cuando cambia el filtro)
+    async loadDisconnectedHistory() {
+        try {
+            const disconnectedHistory = await API.getDisconnectedHistory(this.currentDisconnectedPeriod);
+            
+            const disconnectedHistoryTable = document.getElementById('disconnectedHistoryTable').querySelector('tbody');
+            
+            if (disconnectedHistory && disconnectedHistory.length > 0) {
+                disconnectedHistoryTable.innerHTML = disconnectedHistory.map(host => {
+                    const detectedDate = new Date(host.detected_at);
+                    const dateStr = detectedDate.toLocaleString('es-ES', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    return `
+                    <tr>
+                        <td>${host.hostname}</td>
+                        <td>${host.datacenter}</td>
+                        <td>${host.cluster}</td>
+                        <td>${host.vcenter}</td>
+                        <td><span class="status-badge status-disconnected">${host.connection_state}</span></td>
+                        <td>${host.esxi_version} (${host.esxi_build})</td>
+                        <td>${dateStr}</td>
+                    </tr>
+                `;
+                }).join('');
+            } else {
+                disconnectedHistoryTable.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay hosts desconectados en el período seleccionado</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error cargando histórico:', error);
+        }
     },
     
     // Mostrar/ocultar overlay de carga

@@ -1,6 +1,7 @@
 // API Module - Maneja todas las peticiones a la base de datos
 const API = {
-    baseUrl: 'http://localhost:8080/api',
+    // Detectar puerto automáticamente
+    baseUrl: `http://${window.location.hostname}:${window.location.port}/api`,
     
     // Obtener resumen de última ejecución
     async getLatestSummary() {
@@ -10,7 +11,13 @@ const API = {
                 console.error('API error:', response.status, response.statusText);
                 return null;
             }
-            const data = await response.json();
+            let data = await response.json();
+            
+            // Si es un array, tomar el primer elemento
+            if (Array.isArray(data) && data.length > 0) {
+                data = data[0];
+            }
+            
             console.log('Latest summary:', data);
             return data;
         } catch (error) {
@@ -52,13 +59,24 @@ const API = {
         }
     },
     
-    // Obtener hosts desconectados
+    // Obtener hosts desconectados (última ejecución)
     async getDisconnectedHosts() {
         try {
             const response = await fetch(`${this.baseUrl}/disconnected-hosts`);
             return await response.json();
         } catch (error) {
             console.error('Error fetching disconnected hosts:', error);
+            return null;
+        }
+    },
+    
+    // Obtener histórico de hosts desconectados
+    async getDisconnectedHistory(period = '7') {
+        try {
+            const response = await fetch(`${this.baseUrl}/disconnected-history?period=${period}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching disconnected history:', error);
             return null;
         }
     },
